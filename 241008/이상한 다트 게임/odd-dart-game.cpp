@@ -14,80 +14,98 @@ static void Init()
 	cout.tie(NULL);
 	ios::sync_with_stdio(false);
 }
-void Rotation(vector<deque<int>>& dart, int i,int d)
+void Rotation(vector<deque<int>>& dart, int i, int d, int k)
 {
-	if (d == 0)
-	{
-		dart[i].push_front(dart[i].back());
-		dart[i].pop_back();
-	}
-	else if(d == 1)
-	{
-		dart[i].push_back(dart[i].front());
-		dart[i].pop_front();
-	}
+	if (d == 0)  
+		rotate(dart[i].rbegin(), dart[i].rbegin() + k, dart[i].rend());
+	else if (d == 1)  
+		rotate(dart[i].begin(), dart[i].begin() + k, dart[i].end());
 }
+
 bool RemoveAdjacent(vector<deque<int>>& dart)
 {
-	vector<deque<int>> temp(dart.size(), deque<int>(dart[0].size(), 0));
+	bool IsRemove = false;
 	int rows = dart.size();
 	int cols = dart[0].size();
+	vector<vector<bool>> toRemove(rows, vector<bool>(cols, false));
 
-	bool IsRemove = false;
-
-	auto isAdjacentEqual = [&](int y, int x, int val) -> bool
+	auto markForRemoval = [&](int y, int x, int ny, int nx)
 		{
-			int up = y - 1;
-			int down = y + 1;
-			int left = (x == 0) ? cols - 1 : x - 1;
-			int right = (x == cols - 1) ? 0 : x + 1;
-
-			if (y == 0)
-				return (dart[down][x] == val || dart[y][left] == val || dart[y][right] == val);
-			else if (y == rows - 1)
-				return (dart[up][x] == val || dart[y][left] == val || dart[y][right] == val);
-			else
-				return (dart[up][x] == val || dart[down][x] == val || dart[y][left] == val || dart[y][right] == val);
+			if (dart[y][x] == dart[ny][nx] && dart[y][x] != 0)
+			{
+				toRemove[y][x] = true;
+				toRemove[ny][nx] = true;
+			}
 		};
 
 	for (int y = 0; y < rows; y++)
 	{
 		for (int x = 0; x < cols; x++)
 		{
-			if (isAdjacentEqual(y, x, dart[y][x]))
+			int left = (x == 0) ? cols - 1 : x - 1;
+			int right = (x == cols - 1) ? 0 : x + 1;
+			markForRemoval(y, x, y, left);   
+			markForRemoval(y, x, y, right);  
+
+			if (y > 0)
 			{
-				temp[y][x] = 0;
-				IsRemove = true;
+				markForRemoval(y, x, y - 1, x);  
 			}
-			else
-				temp[y][x] = dart[y][x];
+			if (y < rows - 1)
+			{
+				markForRemoval(y, x, y + 1, x); 
+			}
 		}
 	}
 
-	dart = temp;
+	for (int y = 0; y < rows; y++)
+	{
+		for (int x = 0; x < cols; x++)
+		{
+			if (toRemove[y][x])
+			{
+				dart[y][x] = 0;
+				IsRemove = true;
+			}
+		}
+	}
+
 	return IsRemove;
 }
+
 void Normalization(vector<deque<int>>& dart)
 {
-	int cnt = 0;
-	int sum = 0;
-	for (auto row : dart)
-		for (auto col : row)
-			if (col != 0)
+	int sum = 0, cnt = 0;
+
+	for (const auto& row : dart)
+	{
+		for (const auto& col : row)
+		{
+			if (col > 0)
 			{
 				sum += col;
-				cnt += 1;
+				cnt++;
 			}
+		}
+	}
+
+	if (cnt == 0) return;  
 
 	int avg = sum / cnt;
 
-	for (auto row : dart)
-		for (auto col : row)
-			if (col > avg)
-				col -= 1;
-			else if (col < avg)
-				col += 1;
+	for (auto& row : dart)
+	{
+		for (auto& col : row)
+		{
+			if (col > 0)
+			{
+				if (col > avg) col -= 1;
+				else if (col < avg) col += 1;
+			}
+		}
+	}
 }
+
 int main()
 {
 	Init();
@@ -108,25 +126,28 @@ int main()
 	{
 		int x, d, k;
 		cin >> x >> d >> k;
-		for (int i = x; i <= n; i *= 2)
+		for (int i = x; i <= n; i += x)
 		{
-			for (int j = 0; j < k; j++)
-			{
-				Rotation(dart, i - 1, d);
-			}
+			Rotation(dart, i - 1, d, k % m);  
 		}
-		auto trigger = RemoveAdjacent(dart);
-		if(trigger == false)
+
+		bool removed = RemoveAdjacent(dart);
+		if (!removed)
+		{
 			Normalization(dart);
+		}
 	}
 
 	int sum = 0;
-
-	for (auto row : dart)
-		for (auto col : row)
+	for (const auto& row : dart)
+	{
+		for (const auto& col : row)
+		{
 			sum += col;
+		}
+	}
 
-	cout << sum;
+	cout << sum << "\n";
 
 	return 0;
 }
